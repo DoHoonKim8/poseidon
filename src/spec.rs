@@ -1,6 +1,6 @@
 use std::ops::Index;
 
-use crate::{grain::Grain, matrix::Matrix};
+use crate::{grain::Grain, matrix::Matrix, constants::{self}};
 use halo2curves::FieldExt;
 
 /// `State` is structure `T` sized field elements that are subjected to
@@ -303,8 +303,9 @@ impl<F: FieldExt, const T: usize, const RATE: usize> Spec<F, T, RATE> {
     /// calculating unoptimized round constants with reference `Grain` then
     /// calculates optimized constants and sparse matrices
     pub fn new(r_f: usize, r_p: usize) -> Self {
-        let (unoptimized_constants, mds) = Grain::generate(r_f, r_p);
-        let constants = Self::calculate_optimized_constants(r_f, r_p, unoptimized_constants, &mds);
+        let mds = constants::mds_matrix::<F, T, RATE>();
+        let upoptimized_constants: Vec<[F; T]> = constants::get_round_constants();
+        let constants = Self::calculate_optimized_constants(r_f, r_p, upoptimized_constants, &mds);
         let (sparse_matrices, pre_sparse_mds) = Self::calculate_sparse_matrices(r_p, &mds);
 
         Self {

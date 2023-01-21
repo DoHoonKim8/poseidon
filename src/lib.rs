@@ -5,6 +5,7 @@
 #![deny(missing_docs)]
 
 mod grain;
+mod constants;
 mod matrix;
 mod permutation;
 mod poseidon;
