@@ -4,13 +4,13 @@ use halo2curves::FieldExt;
 /// Poseidon hasher that maintains state and inputs and yields single element
 /// output when desired
 #[derive(Debug, Clone)]
-pub struct Poseidon<F: FieldExt, const T: usize, const RATE: usize> {
+pub struct Poseidon<F: FieldExt, const T: usize, const RATE: usize, const T_MINUS_ONE: usize> {
     state: State<F, T>,
-    spec: Spec<F, T, RATE>,
+    spec: Spec<F, T, T_MINUS_ONE>,
     absorbing: Vec<F>,
 }
 
-impl<F: FieldExt, const T: usize, const RATE: usize> Poseidon<F, T, RATE> {
+impl<F: FieldExt, const T: usize, const RATE: usize, const T_MINUS_ONE: usize> Poseidon<F, T, RATE, T_MINUS_ONE> {
     /// Constructs a clear state poseidon instance
     pub fn new(r_f: usize, r_p: usize) -> Self {
         Self {

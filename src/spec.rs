@@ -68,9 +68,9 @@ impl<F: FieldExt, const T: usize> State<F, T> {
 /// design matures. Number of partial rounds can be deriven from number of
 /// constants.
 #[derive(Debug, Clone)]
-pub struct Spec<F: FieldExt, const T: usize, const RATE: usize> {
+pub struct Spec<F: FieldExt, const T: usize, const T_MINUS_ONE: usize> {
     pub(crate) r_f: usize,
-    pub(crate) mds_matrices: MDSMatrices<F, T, RATE>,
+    pub(crate) mds_matrices: MDSMatrices<F, T, T_MINUS_ONE>,
     pub(crate) constants: OptimizedConstants<F, T>,
 }
 
