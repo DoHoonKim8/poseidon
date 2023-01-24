@@ -4,8 +4,8 @@
 #![deny(missing_debug_implementations)]
 #![deny(missing_docs)]
 
-mod grain;
 mod constants;
+mod grain;
 mod matrix;
 mod permutation;
 mod poseidon;

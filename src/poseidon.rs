@@ -10,7 +10,9 @@ pub struct Poseidon<F: FieldExt, const T: usize, const RATE: usize, const T_MINU
     absorbing: Vec<F>,
 }
 
-impl<F: FieldExt, const T: usize, const RATE: usize, const T_MINUS_ONE: usize> Poseidon<F, T, RATE, T_MINUS_ONE> {
+impl<F: FieldExt, const T: usize, const RATE: usize, const T_MINUS_ONE: usize>
+    Poseidon<F, T, RATE, T_MINUS_ONE>
+{
     /// Constructs a clear state poseidon instance
     pub fn new(r_f: usize, r_p: usize) -> Self {
         Self {
@@ -43,12 +45,11 @@ mod tests {
     use paste::paste;
     use rand_core::OsRng;
 
-
     const R_F: usize = 8;
     const R_P: usize = 57;
     const T: usize = 5;
     const RATE: usize = 4;
-    
+
     fn gen_random_vec(len: usize) -> Vec<Fr> {
         (0..len).map(|_| Fr::random(OsRng)).collect::<Vec<Fr>>()
     }

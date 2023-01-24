@@ -1,6 +1,10 @@
 use std::ops::Index;
 
-use crate::{grain::Grain, matrix::Matrix, constants::{self}};
+use crate::{
+    constants::{self},
+    grain::Grain,
+    matrix::Matrix,
+};
 use halo2curves::FieldExt;
 
 /// `State` is structure `T` sized field elements that are subjected to
@@ -74,13 +78,13 @@ pub struct Spec<F: FieldExt, const T: usize, const T_MINUS_ONE: usize> {
     pub(crate) constants: OptimizedConstants<F, T>,
 }
 
-impl<F: FieldExt, const T: usize, const RATE: usize> Spec<F, T, RATE> {
+impl<F: FieldExt, const T: usize, const T_MINUS_ONE: usize> Spec<F, T, T_MINUS_ONE> {
     /// Number of full rounds
     pub fn r_f(&self) -> usize {
         self.r_f.clone()
     }
     /// Set of MDS Matrices used in permutation line
-    pub fn mds_matrices(&self) -> &MDSMatrices<F, T, RATE> {
+    pub fn mds_matrices(&self) -> &MDSMatrices<F, T, T_MINUS_ONE> {
         &self.mds_matrices
     }
     /// Optimised round constants
@@ -120,34 +124,38 @@ impl<F: FieldExt, const T: usize> OptimizedConstants<F, T> {
 /// also called `pre_sparse_mds` and sparse matrices that enables us to reduce
 /// number of multiplications in apply MDS step
 #[derive(Debug, Clone)]
-pub struct MDSMatrices<F: FieldExt, const T: usize, const RATE: usize> {
-    pub(crate) mds: MDSMatrix<F, T, RATE>,
-    pub(crate) pre_sparse_mds: MDSMatrix<F, T, RATE>,
-    pub(crate) sparse_matrices: Vec<SparseMDSMatrix<F, T, RATE>>,
+pub struct MDSMatrices<F: FieldExt, const T: usize, const T_MINUS_ONE: usize> {
+    pub(crate) mds: MDSMatrix<F, T, T_MINUS_ONE>,
+    pub(crate) pre_sparse_mds: MDSMatrix<F, T, T_MINUS_ONE>,
+    pub(crate) sparse_matrices: Vec<SparseMDSMatrix<F, T, T_MINUS_ONE>>,
 }
 
-impl<F: FieldExt, const T: usize, const RATE: usize> MDSMatrices<F, T, RATE> {
+impl<F: FieldExt, const T: usize, const T_MINUS_ONE: usize> MDSMatrices<F, T, T_MINUS_ONE> {
     /// Returns original MDS matrix
-    pub fn mds(&self) -> &MDSMatrix<F, T, RATE> {
+    pub fn mds(&self) -> &MDSMatrix<F, T, T_MINUS_ONE> {
         &self.mds
     }
 
     /// Returns transition matrix for sparse trick
-    pub fn pre_sparse_mds(&self) -> &MDSMatrix<F, T, RATE> {
+    pub fn pre_sparse_mds(&self) -> &MDSMatrix<F, T, T_MINUS_ONE> {
         &self.pre_sparse_mds
     }
 
     /// Returns sparse matrices for partial rounds
-    pub fn sparse_matrices(&self) -> &Vec<SparseMDSMatrix<F, T, RATE>> {
+    pub fn sparse_matrices(&self) -> &Vec<SparseMDSMatrix<F, T, T_MINUS_ONE>> {
         &self.sparse_matrices
     }
 }
 
 /// `MDSMatrix` is applied to `State` to achive linear layer of Poseidon
 #[derive(Clone, Debug)]
-pub struct MDSMatrix<F: FieldExt, const T: usize, const RATE: usize>(pub(crate) Matrix<F, T>);
+pub struct MDSMatrix<F: FieldExt, const T: usize, const T_MINUS_ONE: usize>(
+    pub(crate) Matrix<F, T>,
+);
 
-impl<F: FieldExt, const T: usize, const RATE: usize> Index<usize> for MDSMatrix<F, T, RATE> {
+impl<F: FieldExt, const T: usize, const T_MINUS_ONE: usize> Index<usize>
+    for MDSMatrix<F, T, T_MINUS_ONE>
+{
     type Output = [F; T];
 
     fn index(&self, idx: usize) -> &Self::Output {
@@ -155,7 +163,7 @@ impl<F: FieldExt, const T: usize, const RATE: usize> Index<usize> for MDSMatrix<
     }
 }
 
-impl<F: FieldExt, const T: usize, const RATE: usize> MDSMatrix<F, T, RATE> {
+impl<F: FieldExt, const T: usize, const T_MINUS_ONE: usize> MDSMatrix<F, T, T_MINUS_ONE> {
     /// Applies `MDSMatrix` to the state
     pub(crate) fn apply(&self, state: &mut State<F, T>) {
         state.0 = self.0.mul_vector(&state.0);
@@ -198,10 +206,10 @@ impl<F: FieldExt, const T: usize, const RATE: usize> MDSMatrix<F, T, RATE> {
     /// Factorises an MDS matrix `M` into `M'` and `M''` where `M = M' *  M''`.
     /// Resulted `M''` matrices are the sparse ones while `M'` will contribute
     /// to the accumulator of the process
-    fn factorise(&self) -> (Self, SparseMDSMatrix<F, T, RATE>) {
+    fn factorise(&self) -> (Self, SparseMDSMatrix<F, T, T_MINUS_ONE>) {
         // Given `(t-1 * t-1)` MDS matrix called `hat` constructs the matrix in
         // form `[[1 | 0], [0 | m]]`
-        let prime = |hat: Matrix<F, RATE>| -> MDSMatrix<F, T, RATE> {
+        let prime = |hat: Matrix<F, T_MINUS_ONE>| -> MDSMatrix<F, T, T_MINUS_ONE> {
             let mut prime = Matrix::identity();
             for (prime_row, hat_row) in prime.0.iter_mut().skip(1).zip(hat.0.iter()) {
                 for (el_prime, el_hat) in prime_row.iter_mut().skip(1).zip(hat_row.iter()) {
@@ -213,7 +221,7 @@ impl<F: FieldExt, const T: usize, const RATE: usize> MDSMatrix<F, T, RATE> {
 
         // Given `(t-1)` sized `w_hat` vector constructs the matrix in form
         // `[[m_0_0 | m_0_i], [w_hat | identity]]`
-        let prime_prime = |w_hat: [F; RATE]| -> Self {
+        let prime_prime = |w_hat: [F; T_MINUS_ONE]| -> Self {
             let mut prime_prime = Matrix::identity();
             prime_prime.0[0] = self.0 .0[0];
             for (row, w) in prime_prime.0.iter_mut().skip(1).zip(w_hat.iter()) {
@@ -223,7 +231,7 @@ impl<F: FieldExt, const T: usize, const RATE: usize> MDSMatrix<F, T, RATE> {
         };
 
         let w = self.0.w();
-        let m_hat = self.0.sub::<RATE>();
+        let m_hat = self.0.sub::<T_MINUS_ONE>();
         let m_hat_inverse = m_hat.invert();
         let w_hat = m_hat_inverse.mul_vector(&w);
         (prime(m_hat), prime_prime(w_hat).transpose().into())
@@ -238,19 +246,19 @@ impl<F: FieldExt, const T: usize, const RATE: usize> MDSMatrix<F, T, RATE> {
 /// `SparseMDSMatrix` are in `[row], [hat | identity]` form and used in linear
 /// layer of partial rounds instead of the original MDS
 #[derive(Debug, Clone)]
-pub struct SparseMDSMatrix<F: FieldExt, const T: usize, const RATE: usize> {
+pub struct SparseMDSMatrix<F: FieldExt, const T: usize, const T_MINUS_ONE: usize> {
     pub(crate) row: [F; T],
-    pub(crate) col_hat: [F; RATE],
+    pub(crate) col_hat: [F; T_MINUS_ONE],
 }
 
-impl<F: FieldExt, const T: usize, const RATE: usize> SparseMDSMatrix<F, T, RATE> {
+impl<F: FieldExt, const T: usize, const T_MINUS_ONE: usize> SparseMDSMatrix<F, T, T_MINUS_ONE> {
     /// Returns the first row
     pub fn row(&self) -> &[F; T] {
         &self.row
     }
 
     /// Returns the first column without first element in the first row
-    pub fn col_hat(&self) -> &[F; RATE] {
+    pub fn col_hat(&self) -> &[F; T_MINUS_ONE] {
         &self.col_hat
     }
 
@@ -274,11 +282,11 @@ impl<F: FieldExt, const T: usize, const RATE: usize> SparseMDSMatrix<F, T, RATE>
     }
 }
 
-impl<F: FieldExt, const T: usize, const RATE: usize> From<MDSMatrix<F, T, RATE>>
-    for SparseMDSMatrix<F, T, RATE>
+impl<F: FieldExt, const T: usize, const T_MINUS_ONE: usize> From<MDSMatrix<F, T, T_MINUS_ONE>>
+    for SparseMDSMatrix<F, T, T_MINUS_ONE>
 {
     /// Assert the form and represent an MDS matrix as a sparse MDS matrix
-    fn from(mds: MDSMatrix<F, T, RATE>) -> Self {
+    fn from(mds: MDSMatrix<F, T, T_MINUS_ONE>) -> Self {
         let mds = mds.0;
         for (i, row) in mds.0.iter().enumerate().skip(1) {
             for (j, _) in row.iter().enumerate().skip(1) {
@@ -286,7 +294,7 @@ impl<F: FieldExt, const T: usize, const RATE: usize> From<MDSMatrix<F, T, RATE>>
             }
         }
 
-        let (mut row, mut col_hat) = ([F::zero(); T], [F::zero(); RATE]);
+        let (mut row, mut col_hat) = ([F::zero(); T], [F::zero(); T_MINUS_ONE]);
         for (row_el, el) in row.iter_mut().zip(mds.0[0].iter()) {
             *row_el = *el
         }
@@ -298,12 +306,12 @@ impl<F: FieldExt, const T: usize, const RATE: usize> From<MDSMatrix<F, T, RATE>>
     }
 }
 
-impl<F: FieldExt, const T: usize, const RATE: usize> Spec<F, T, RATE> {
+impl<F: FieldExt, const T: usize, const T_MINUS_ONE: usize> Spec<F, T, T_MINUS_ONE> {
     /// Given number of round parameters constructs new Posedion instance
     /// calculating unoptimized round constants with reference `Grain` then
     /// calculates optimized constants and sparse matrices
     pub fn new(r_f: usize, r_p: usize) -> Self {
-        let mds = constants::mds_matrix::<F, T, RATE>();
+        let mds = constants::mds_matrix::<F, T, T_MINUS_ONE>();
         let upoptimized_constants: Vec<[F; T]> = constants::get_round_constants();
         let constants = Self::calculate_optimized_constants(r_f, r_p, upoptimized_constants, &mds);
         let (sparse_matrices, pre_sparse_mds) = Self::calculate_sparse_matrices(r_p, &mds);
@@ -323,7 +331,7 @@ impl<F: FieldExt, const T: usize, const RATE: usize> Spec<F, T, RATE> {
         r_f: usize,
         r_p: usize,
         constants: Vec<[F; T]>,
-        mds: &MDSMatrix<F, T, RATE>,
+        mds: &MDSMatrix<F, T, T_MINUS_ONE>,
     ) -> OptimizedConstants<F, T> {
         let inverse_mds = mds.invert();
         let (number_of_rounds, r_f_half) = (r_f + r_p, r_f / 2);
@@ -380,8 +388,11 @@ impl<F: FieldExt, const T: usize, const RATE: usize> Spec<F, T, RATE> {
 
     fn calculate_sparse_matrices(
         r_p: usize,
-        mds: &MDSMatrix<F, T, RATE>,
-    ) -> (Vec<SparseMDSMatrix<F, T, RATE>>, MDSMatrix<F, T, RATE>) {
+        mds: &MDSMatrix<F, T, T_MINUS_ONE>,
+    ) -> (
+        Vec<SparseMDSMatrix<F, T, T_MINUS_ONE>>,
+        MDSMatrix<F, T, T_MINUS_ONE>,
+    ) {
         let mds = mds.transpose();
         let mut acc = mds.clone();
         let mut sparse_matrices = (0..r_p)
@@ -390,7 +401,7 @@ impl<F: FieldExt, const T: usize, const RATE: usize> Spec<F, T, RATE> {
                 acc = mds.mul(&m_prime);
                 m_prime_prime
             })
-            .collect::<Vec<SparseMDSMatrix<F, T, RATE>>>();
+            .collect::<Vec<SparseMDSMatrix<F, T, T_MINUS_ONE>>>();
 
         sparse_matrices.reverse();
         (sparse_matrices, acc.transpose())
