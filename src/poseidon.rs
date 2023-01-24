@@ -32,8 +32,17 @@ impl<F: FieldExt, const T: usize, const RATE: usize, const T_MINUS_ONE: usize>
     }
 
     /// Results a single element by absorbing already added inputs
-    pub fn squeeze(&mut self) -> F {
-        self.state.0[0]
+    pub fn squeeze(&mut self, num_outputs: usize) -> Vec<F> {
+        let mut outputs = Vec::new();
+        loop {
+            for &item in self.state.0.iter().take(RATE) {
+                outputs.push(item);
+                if outputs.len() == num_outputs {
+                    return outputs;
+                }
+            }
+            self.spec.permute(&mut self.state);
+        }
     }
 }
 
