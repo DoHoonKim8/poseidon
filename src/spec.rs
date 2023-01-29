@@ -2,7 +2,6 @@ use std::ops::Index;
 
 use crate::{
     constants::{self},
-    grain::Grain,
     matrix::Matrix,
 };
 use halo2curves::FieldExt;
@@ -13,10 +12,8 @@ use halo2curves::FieldExt;
 pub struct State<F: FieldExt, const T: usize>(pub(crate) [F; T]);
 
 impl<F: FieldExt, const T: usize> Default for State<F, T> {
-    /// The capacity value is 2**64 + (o − 1) where o the output length.
     fn default() -> Self {
         let mut state = [F::zero(); T];
-        state[0] = F::from_u128(1 << 64);
         State(state)
     }
 }
